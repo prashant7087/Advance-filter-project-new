@@ -20,8 +20,9 @@ NOSE_TIP = 1
 FOREHEAD = 10
 CHIN = 152
 
-# Model file path
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'face_landmarker.task')
+# Model file path - use /tmp for Vercel serverless (read-only filesystem)
+import tempfile
+MODEL_PATH = os.path.join(tempfile.gettempdir(), 'face_landmarker.task')
 MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
 
 
