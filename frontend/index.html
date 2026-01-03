@@ -1,0 +1,690 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lenskart AI Fitter</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+body { font-family: 'Inter', sans-serif; background-color: #0a0c10; background-image: radial-gradient(circle at top right, rgba(37, 99, 235, 0.15), transparent 40%), radial-gradient(circle at bottom left, rgba(37, 99, 235, 0.1), transparent 50%); color: #e6edf3; }
+.fitter-card { background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(48, 54, 61, 0.5); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); }
+.btn { background-image: linear-gradient(to right, #2563eb, #59a6f1); border: none; color: white; padding: 0.8rem 1.6rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.1); }
+.btn:hover:not(:disabled) { transform: translateY(-3px) scale(1.03); box-shadow: 0 7px 20px rgba(37, 99, 235, 0.4), inset 0 2px 0 rgba(255, 255, 255, 0.1); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none; }
+.input-field { background-color: #0d1117; border: 1px solid #30363d; color: #e6edf3; transition: all 0.2s ease-in-out; }
+.input-field:focus { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2); outline: none; }
+input[type="file"] { display: none; }
+.custom-file-upload { background-color: #0d1117; border: 1px solid #30363d; color: #8b949e; transition: all 0.3s ease; cursor: pointer; }
+.custom-file-upload.selected, .custom-file-upload:hover { border-color: #2563eb; color: #e6edf3; background-color: #161b22; transform: translateY(-2px); }
+.animated-entry { opacity: 0; transform: translateY(20px); animation: fadeIn 0.6s forwards; }
+@keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+.result-card {
+background-color: #161b22;
+border: 1px solid #30363d;
+transform: scale(0.95);
+opacity: 0;
+animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.result-card:hover {
+transform: scale(1.03);
+box-shadow: 0 0 25px rgba(37, 99, 235, 0.3);
+}
+@keyframes popIn { to { transform: scale(1); opacity: 1; } }
+
+#d3-container { display: flex; justify-content: center; align-items: center; cursor: grab; overflow: hidden; background: rgba(0, 0, 0, 0.2); position: relative; }
+#d3-container canvas { margin: 0 auto; display: block; }
+.measurement-value { font-variant-numeric: tabular-nums; }
+
+#scanner-animation { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw 2s ease-in-out forwards; }
+#scanner-line { animation: scan 2s ease-in-out forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes scan { 0% { transform: translateY(-10%); } 100% { transform: translateY(110%); } }
+</style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+<div id="app-container" class="fitter-card w-full max-w-lg p-8 rounded-2xl transition-all duration-500">
+<div id="header" class="text-center mb-8 animated-entry">
+<div class="flex items-center justify-center mb-2">
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#59a6f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><circle cx="6" cy="12" r="4"></circle><circle cx="18" cy="12" r="4"></circle><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+<h1 class="text-3xl font-bold text-white">Lenskart AI Fitter</h1>
+</div>
+<p class="text-gray-400">Hyper-precise optical measurements, powered by AI.</p>
+</div>
+<div id="error-message" class="hidden text-center p-3 rounded-lg mb-4 bg-red-900/70 border border-red-700 text-red-200 animated-entry"></div>
+<div id="input-section" class="space-y-6 animated-entry" style="animation-delay: 0.1s;">
+<div>
+<label class="block text-sm font-medium mb-2 text-gray-300">1. Upload Video (while wearing glasses)</label>
+<div class="flex space-x-4">
+<label id="videoUploadLabel" for="videoUpload" class="custom-file-upload p-3 rounded-lg w-full flex flex-col items-center justify-center">
+<svg class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+<span id="videoUploadText" class="text-sm">Select Video</span>
+</label>
+<input id="videoUpload" type="file" accept="video/*"/>
+</div>
+</div>
+<div>
+<label for="frameWidth" class="block text-sm font-medium mb-2 text-gray-300">2. Enter Total Frame Width (mm)</label>
+<input type="number" id="frameWidth" placeholder="e.g., 142" class="input-field w-full p-2.5 rounded-lg" value="142">
+</div>
+<div id="auto-analyze-area" class="pt-2">
+<button id="analyze-button" onclick="analyzeAutomatically()" class="btn w-full flex items-center justify-center" disabled>
+Start AI Analysis
+</button>
+</div>
+</div>
+
+<div id="processing-section" class="hidden">
+<div id="loading-state" class="text-center h-full flex flex-col justify-center items-center space-y-4 py-8">
+<svg width="100" height="100" viewBox="-10 -20 120 140" class="w-24 h-24"><defs><mask id="mask"><rect x="-10" y="-20" width="120" height="140" fill="white"></rect><path d="M10,0 Q50, -15 90,0 T10,0" fill="black"/><path d="M10,100 Q50,115 90,100 T10,100" fill="black"/><circle cx="30" cy="40" r="10" fill="black"/><circle cx="70" cy="40" r="10" fill="black"/></mask></defs><path id="scanner-animation" d="M10,0 Q50, -15 90,0 T10,0 M10,100 Q50,115 90,100 T10,100 M20,40 A10,10 0 1,1 40,40 A10,10 0 1,1 20,40 M60,40 A10,10 0 1,1 80,40 A10,10 0 1,1 60,40" stroke="#59a6f1" stroke-width="2" fill="none" mask="url(#mask)"/><rect id="scanner-line" x="-10" y="0" width="120" height="2" fill="#59a6f1" style="transform: translateY(-10%);"/></svg>
+<p class="text-lg text-gray-300 animated-entry" style="animation-delay: 0.5s;">Analyzing your biometrics...</p>
+</div>
+</div>
+
+<div id="results-section" class="hidden">
+<div class="flex flex-col md:flex-row md:space-x-8">
+<div class="md:w-2/5 flex flex-col">
+<h2 class="text-xl font-semibold text-center text-white mb-6">Analysis Complete</h2>
+<div class="grid grid-cols-2 gap-4 flex-grow">
+<div class="result-card rounded-lg p-4 text-center" style="animation-delay: 0.1s;">
+<div class="flex items-center justify-center text-sm text-gray-400 mb-2"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>Pupillary Distance</div>
+<p id="pdResult" class="text-2xl font-bold text-white measurement-value">-</p>
+</div>
+<div class="result-card rounded-lg p-4 text-center" style="animation-delay: 0.2s;">
+<div class="flex items-center justify-center text-sm text-gray-400 mb-2"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 17l-4 4m0 0l-4-4m4 4V3"></path></svg>Fitting Height</div>
+<p id="fhResult" class="text-2xl font-bold text-white measurement-value">-</p>
+</div>
+<div class="result-card rounded-lg p-4 text-center" style="animation-delay: 0.3s;">
+<div class="flex items-center justify-center text-sm text-gray-400 mb-2"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path></svg>Pantoscopic Tilt</div>
+<p id="tiltResult" class="text-2xl font-bold text-white measurement-value">-</p>
+</div>
+<div class="result-card rounded-lg p-4 text-center" style="animation-delay: 0.4s;">
+<div class="flex items-center justify-center text-sm text-gray-400 mb-2"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>Vertex Distance</div>
+<p id="vertexResult" class="text-2xl font-bold text-white measurement-value">-</p>
+</div>
+</div>
+<div class="text-center mt-8 animated-entry" style="animation-delay: 0.5s;"><button onclick="resetAll()" class="btn btn-secondary text-sm font-semibold px-6 py-2 rounded-lg">Start Over</button></div>
+</div>
+<div class="md:w-3/5 mt-8 md:mt-0">
+<div class="result-card rounded-lg p-4 text-center w-full h-full" style="animation-delay: 0s;">
+<p class="text-sm text-gray-400 mb-2">Interactive 3D Facial Model</p>
+<div id="d3-container" class="rounded-lg bg-black/20 w-full h-96"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+// DOM Elements
+const appContainer = document.getElementById('app-container');
+const header = document.getElementById('header');
+const inputSection = document.getElementById('input-section');
+const processingSection = document.getElementById('processing-section');
+const resultsSection = document.getElementById('results-section');
+const d3Container = document.getElementById('d3-container');
+const videoUpload = document.getElementById('videoUpload');
+const videoUploadLabel = document.getElementById('videoUploadLabel');
+const videoUploadText = document.getElementById('videoUploadText');
+const frameWidthInput = document.getElementById('frameWidth'), errorMessage = document.getElementById('error-message');
+const analyzeButton = document.getElementById('analyze-button');
+const loadingState = document.getElementById('loading-state');
+const pdResult = document.getElementById('pdResult'), fhResult = document.getElementById('fhResult'), tiltResult = document.getElementById('tiltResult'), vertexResult = document.getElementById('vertexResult');
+let selectedFile = null, scene, camera, renderer, controls;
+// Event Listeners
+videoUpload.addEventListener('change', handleVideoUpload);
+frameWidthInput.addEventListener('input', updateAnalyzeButtonState);
+
+// --- 3D Scene Setup ---
+function init3DScene() {
+scene = new THREE.Scene();
+const containerBounds = d3Container.getBoundingClientRect();
+camera = new THREE.PerspectiveCamera(50, containerBounds.width / containerBounds.height, 0.1, 1000);
+camera.position.set(0, 0, 500);
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+directionalLight.position.set(50, 50, 100);
+scene.add(directionalLight);
+
+const grid = new THREE.GridHelper(400, 30, 0x2563eb, 0x444444);
+grid.rotation.x = Math.PI / 2;
+grid.position.z = -150;
+scene.add(grid);
+
+renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(containerBounds.width, containerBounds.height);
+d3Container.innerHTML = '';
+d3Container.appendChild(renderer.domElement);
+controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.0;
+controls.enablePan = false;
+controls.target.set(0,0,0);
+
+const animate = function () {
+requestAnimationFrame(animate);
+controls.update();
+renderer.render(scene, camera);
+};
+animate();
+window.addEventListener('resize', onWindowResize, false);
+}
+
+function onWindowResize() {
+if (!renderer) return;
+const containerBounds = d3Container.getBoundingClientRect();
+camera.aspect = containerBounds.width / containerBounds.height;
+camera.updateProjectionMatrix();
+renderer.setSize(containerBounds.width, containerBounds.height);
+}
+// --- MODIFIED RENDER FUNCTION ---
+function render3DModel(landmarks, frameDimensions) {
+// Remove previous model if it exists
+const oldModel = scene.getObjectByName("facePoints");
+if (oldModel) {
+scene.remove(oldModel);
+oldModel.geometry.dispose();
+oldModel.material.dispose();
+}
+
+const geometry = new THREE.BufferGeometry();
+const vertices = [];
+const aspectRatio = frameDimensions.width / frameDimensions.height;
+// Process landmarks into vertices
+landmarks.forEach(lm => {
+const x = lm[0] - 0.5;
+const y = (lm[1] - 0.5) / aspectRatio;
+const z = lm[2];
+vertices.push(x, -y, -z);
+});
+
+geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+// Use PointsMaterial for a "dotted" effect
+const material = new THREE.PointsMaterial({
+color: 0x59a6f1, // A nice blue color
+size: 1.5, // Adjust point size as needed
+sizeAttenuation: true // Points get smaller farther away
+});
+
+// Create a Points object instead of a Mesh
+const facePoints = new THREE.Points(geometry, material);
+facePoints.name = "facePoints";
+
+// Scaling logic
+geometry.computeBoundingBox();
+const boundingBox = geometry.boundingBox;
+const size = new THREE.Vector3();
+boundingBox.getSize(size);
+const scale = 250 / size.length();
+facePoints.scale.set(0, 0, 0); // Start at scale 0 for animation
+scene.add(facePoints);
+// Animate scale-in
+let start = null;
+const duration = 750;
+const animateScale = (timestamp) => {
+if (!start) start = timestamp;
+const progress = timestamp - start;
+const easedProgress = Math.min(progress / duration, 1);
+const currentScale = scale * easedProgress;
+facePoints.scale.set(currentScale, currentScale, currentScale);
+if (progress < duration) {
+requestAnimationFrame(animateScale);
+}
+};
+requestAnimationFrame(animateScale);
+
+controls.reset();
+controls.autoRotate = true;
+}
+
+
+function animateCounter(element, finalValue, unit, decimals = 2) {
+const duration = 1500;
+const startTime = performance.now();
+function update(currentTime) {
+const elapsedTime = currentTime - startTime;
+if (elapsedTime >= duration) {
+element.textContent = `${finalValue.toFixed(decimals)} ${unit}`;
+return;
+}
+const currentValue = (elapsedTime / duration) * finalValue;
+element.textContent = `${currentValue.toFixed(decimals)} ${unit}`;
+requestAnimationFrame(update);
+}
+requestAnimationFrame(update);
+}
+
+function showSection(section) {
+[inputSection, processingSection, resultsSection].forEach(s => s.classList.add('hidden'));
+if(section) section.classList.remove('hidden');
+const isWide = section === resultsSection;
+if(isWide) {
+appContainer.classList.remove('max-w-lg');
+appContainer.classList.add('max-w-6xl');
+} else {
+appContainer.classList.remove('max-w-6xl');
+appContainer.classList.add('max-w-lg');
+}
+if(section === resultsSection || section === processingSection) {
+header.classList.add('hidden');
+} else {
+header.classList.remove('hidden');
+}
+}
+function handleVideoUpload(e) {
+selectedFile = e.target.files[0];
+if (!selectedFile) return;
+videoUploadLabel.classList.add('selected');
+videoUploadText.textContent = selectedFile.name.length > 20 ? selectedFile.name.substring(0, 17) + '...' : selectedFile.name;
+updateAnalyzeButtonState();
+}
+function resetUI() {
+videoUpload.value = '';
+videoUploadLabel.classList.remove('selected');
+videoUploadText.textContent = 'Select Video';
+}
+
+function updateAnalyzeButtonState() {
+analyzeButton.disabled = !(selectedFile && parseFloat(frameWidthInput.value) > 0);
+}
+
+async function analyzeAutomatically() {
+if (!selectedFile || !parseFloat(frameWidthInput.value) > 0) {
+showMessage('Please select a video and enter a valid frame width.', true);
+return;
+}
+showSection(processingSection);
+loadingState.classList.remove('hidden');
+hideMessage();
+const formData = new FormData();
+formData.append('video', selectedFile);
+// --- THIS IS THE FIX ---
+// The key must match what the Flask backend expects: 'frame_width_mm'
+formData.append('frame_width_mm', frameWidthInput.value);
+try {
+const response = await fetch('http://127.0.0.1:5000/process_video', { method: 'POST', body: formData });
+if (!response.ok) {
+const err = await response.json().catch(() => ({}));
+throw new Error(err.error || 'Server error.');
+}
+const results = await response.json();
+displayResults(results);
+} catch (error) {
+showMessage(`Analysis Failed: ${error.message}`, true);
+showSection(inputSection);
+}
+}
+
+function displayResults(results) {
+console.log("Data received from backend:", results);
+showSection(resultsSection);
+const measurements = results.measurements;
+animateCounter(pdResult, measurements.pd, "mm");
+animateCounter(fhResult, measurements.fh, "mm");
+animateCounter(tiltResult, measurements.tilt, "°", 0);
+animateCounter(vertexResult, measurements.vertex, "mm", 0);
+if (results.landmarks && results.frameDimensions) {
+console.log("Attempting to render 3D model...");
+if (!renderer) init3DScene();
+render3DModel(results.landmarks, results.frameDimensions);
+d3Container.parentElement.classList.remove('hidden');
+} else {
+d3Container.parentElement.classList.add('hidden');
+}
+}
+function showMessage(msg, isError = false) {
+errorMessage.textContent = msg;
+errorMessage.classList.remove('hidden');
+}
+
+function hideMessage() {
+errorMessage.classList.add('hidden');
+}
+function resetAll() {
+showSection(inputSection);
+selectedFile = null;
+frameWidthInput.value = '142';
+hideMessage();
+resetUI();
+updateAnalyzeButtonState();
+}
+document.addEventListener('DOMContentLoaded', () => {
+showSection(inputSection);
+updateAnalyzeButtonState();
+});
+</script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lenskart AI Fitter (Video Capture)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0a0c10; color: #e6edf3; }
+        .fitter-card { background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(30px); border: 1px solid rgba(48, 54, 61, 0.5); }
+        .btn { background-image: linear-gradient(to right, #2563eb, #59a6f1); border: none; color: white; padding: 0.8rem 1.6rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .input-field { background-color: #0d1117; border: 1px solid #30363d; }
+        .animated-entry { opacity: 0; transform: translateY(20px); animation: fadeIn 0.6s forwards; }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        .result-card { background-color: #161b22; border: 1px solid #30363d; opacity: 0; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn { to { transform: scale(1); opacity: 1; } }
+        .measurement-value { font-variant-numeric: tabular-nums; }
+        #webcam-container { background-color: #000; position: relative; }
+        #webcam-video { transform: scaleX(-1); }
+        #capture-canvas, #best-frame-canvas { display: none; }
+        .guide-text { position: absolute; top: 10%; color: white; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius: 0.5rem; }
+        .recording-indicator { position: absolute; top: 1rem; right: 1rem; width: 20px; height: 20px; background-color: #ef4444; border-radius: 50%; animation: pulse-rec 1.5s infinite; }
+        @keyframes pulse-rec { 0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        #head-animation { animation: turnHead 6s infinite ease-in-out; }
+        @keyframes turnHead { 0%, 100% { transform: rotateY(0deg); } 25% { transform: rotateY(30deg); } 50% { transform: rotateY(0deg); } 75% { transform: rotateY(-30deg); } }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div id="app-container" class="fitter-card w-full max-w-lg p-8 rounded-2xl transition-all duration-500">
+        <div id="header" class="text-center mb-8 animated-entry">
+            <h1 class="text-3xl font-bold text-white">Lenskart AI Fitter</h1>
+            <p class="text-gray-400">Hyper-precise optical measurements, powered by AI.</p>
+        </div>
+        <div id="error-message" class="hidden text-center p-3 mb-4 bg-red-900/70 border border-red-700 text-red-200 rounded-lg animated-entry"></div>
+
+        <div id="instructions-section" class="space-y-6 animated-entry">
+            <h2 class="text-xl font-semibold text-center text-white">Recording Instructions</h2>
+            <div class="p-4 bg-black/20 rounded-lg border border-gray-700"><svg viewBox="-50 -60 100 120" class="w-full h-48"><ellipse cx="0" cy="0" rx="40" ry="55" stroke-dasharray="4 4" stroke-width="1" stroke="#59a6f1" fill="none"></ellipse><g id="head-animation"><path d="M-25,50 C-45,-20 45,-20 25,50 Z" fill="#4a5568"></path><path d="M-15,-20 a15,18 0 0,0 30,0" fill="#2d3748"></path></g></svg></div>
+            <ul class="text-gray-300 space-y-2 list-disc list-inside text-sm">
+                <li>Hold your phone steady at eye level.</li>
+                <li>Slowly turn your head from **left to right**.</li>
+                <li>Ensure your face is well-lit and clearly visible.</li>
+            </ul>
+            <button onclick="showCaptureSection()" class="btn w-full font-semibold py-3 rounded-lg">I Understand, Proceed</button>
+        </div>
+
+        <div id="capture-section" class="hidden space-y-6">
+            <div>
+                <label class="block text-sm font-medium mb-2 text-gray-300">1. Prepare to Record</label>
+                <div id="webcam-container" class="hidden rounded-lg"><video id="webcam-video" class="w-full h-auto rounded-lg" playsinline></video><div id="recording-indicator" class="hidden recording-indicator"></div><div id="guide-text" class="guide-text">Finding your face...</div></div>
+                <canvas id="capture-canvas"></canvas><canvas id="best-frame-canvas"></canvas>
+                <button id="start-camera-button" onclick="startCamera()" class="btn w-full font-semibold py-3 rounded-lg">Start Camera</button>
+            </div>
+            <div>
+                <label for="frameWidth" class="block text-sm font-medium mb-2 text-gray-300">2. Enter Total Frame Width (mm)</label>
+                <input type="number" id="frameWidth" placeholder="e.g., 142" class="input-field w-full p-2.5 rounded-lg" value="142">
+            </div>
+            <button id="record-button" onclick="startRecording()" class="btn w-full font-semibold py-3 rounded-lg" disabled>Start 5 Second Recording</button>
+        </div>
+        
+        <div id="processing-section" class="hidden">
+             <div class="text-center h-full flex flex-col justify-center items-center space-y-4 py-8">
+                 <svg width="100" height="100" viewBox="-10 -20 120 140" class="w-24 h-24"><defs><mask id="mask"><rect x="-10" y="-20" width="120" height="140" fill="white"></rect><path d="M10,0 Q50, -15 90,0 T10,0" fill="black"/><path d="M10,100 Q50,115 90,100 T10,100" fill="black"/><circle cx="30" cy="40" r="10" fill="black"/><circle cx="70" cy="40" r="10" fill="black"/></mask></defs><path d="M10,0 Q50, -15 90,0 T10,0 M10,100 Q50,115 90,100 T10,100 M20,40 A10,10 0 1,1 40,40 A10,10 0 1,1 20,40 M60,40 A10,10 0 1,1 80,40 A10,10 0 1,1 60,40" stroke="#59a6f1" stroke-width="2" fill="none" mask="url(#mask)"/><rect x="-10" y="0" width="120" height="2" fill="#59a6f1" style="transform: translateY(-10%);"/></svg>
+                 <p class="text-lg text-gray-300">Analyzing your biometrics...</p>
+             </div>
+        </div>
+
+        <div id="results-section" class="hidden">
+            <div class="flex flex-col md:flex-row md:space-x-8">
+                <div class="md:w-2/5 flex flex-col">
+                    <h2 class="text-xl font-semibold text-center text-white mb-6">Analysis Complete</h2>
+                    <div class="grid grid-cols-2 gap-4 flex-grow">
+                        <div class="result-card rounded-lg p-4 text-center">
+                            <div class="flex items-center justify-center text-sm text-gray-400 mb-2">Pupillary Distance</div>
+                            <p id="pdResult" class="text-2xl font-bold text-white measurement-value">-</p>
+                        </div>
+                        <div class="result-card rounded-lg p-4 text-center">
+                            <div class="flex items-center justify-center text-sm text-gray-400 mb-2">Fitting Height</div>
+                            <p id="fhResult" class="text-2xl font-bold text-white measurement-value">-</p>
+                        </div>
+                        <div class="result-card rounded-lg p-4 text-center">
+                            <div class="flex items-center justify-center text-sm text-gray-400 mb-2">Pantoscopic Tilt</div>
+                            <p id="tiltResult" class="text-2xl font-bold text-white measurement-value">-</p>
+                        </div>
+                        <div class="result-card rounded-lg p-4 text-center">
+                            <div class="flex items-center justify-center text-sm text-gray-400 mb-2">Vertex Distance</div>
+                            <p id="vertexResult" class="text-2xl font-bold text-white measurement-value">-</p>
+                        </div>
+                    </div>
+                    <div class="text-center mt-8"><button onclick="resetAll()" class="btn text-sm font-semibold px-6 py-2 rounded-lg">Start Over</button></div>
+                </div>
+                <div class="md:w-3/5 mt-8 md:mt-0">
+                     <div class="result-card rounded-lg p-4 text-center w-full h-full">
+                         <p class="text-sm text-gray-400 mb-2">Interactive 3D Facial Model</p>
+                         <div id="d3-container" class="rounded-lg bg-black/20 w-full h-96"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+
+    <script>
+        // DOM Elements
+        const appContainer = document.getElementById('app-container');
+        const instructionsSection = document.getElementById('instructions-section');
+        const captureSection = document.getElementById('capture-section');
+        const processingSection = document.getElementById('processing-section');
+        const resultsSection = document.getElementById('results-section');
+        const header = document.getElementById('header');
+        const videoElement = document.getElementById('webcam-video');
+        const startCameraButton = document.getElementById('start-camera-button');
+        const webcamContainer = document.getElementById('webcam-container');
+        const recordButton = document.getElementById('record-button');
+        const guideText = document.getElementById('guide-text');
+        const recordingIndicator = document.getElementById('recording-indicator');
+        const bestFrameCanvas = document.getElementById('best-frame-canvas');
+        const errorMessage = document.getElementById('error-message');
+        const frameWidthInput = document.getElementById('frameWidth');
+        const pdResult = document.getElementById('pdResult');
+        const fhResult = document.getElementById('fhResult');
+        const tiltResult = document.getElementById('tiltResult');
+        const vertexResult = document.getElementById('vertexResult');
+        const d3Container = document.getElementById('d3-container');
+
+        let bestScore = -1;
+        let isRecording = false;
+        let scene, camera, renderer, controls;
+
+        const faceMesh = new FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
+        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        faceMesh.onResults(onResults);
+        const cameraMP = new Camera(videoElement, {
+            onFrame: async () => await faceMesh.send({image: videoElement}),
+            width: 1280, height: 720
+        });
+
+        function showCaptureSection() {
+            instructionsSection.classList.add('hidden');
+            captureSection.classList.remove('hidden');
+        }
+
+        async function startCamera() {
+            startCameraButton.disabled = true;
+            startCameraButton.textContent = 'Starting...';
+            try {
+                await cameraMP.start();
+                webcamContainer.classList.remove('hidden');
+                startCameraButton.classList.add('hidden');
+            } catch (err) {
+                showMessage('Could not access webcam. Please check permissions.', true);
+                startCameraButton.disabled = false;
+                startCameraButton.textContent = 'Start Camera';
+            }
+        }
+        
+        function onResults(results) {
+            if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+                guideText.textContent = 'No face detected';
+                recordButton.disabled = true;
+                return;
+            }
+            if (!isRecording) {
+                recordButton.disabled = false;
+                guideText.textContent = 'Ready to Record';
+            }
+            
+            if (isRecording) {
+                const landmarks = results.multiFaceLandmarks[0];
+                const score = calculateFrameScore(landmarks);
+                if (score > bestScore) {
+                    bestScore = score;
+                    const ctx = bestFrameCanvas.getContext('2d');
+                    bestFrameCanvas.width = videoElement.videoWidth;
+                    bestFrameCanvas.height = videoElement.videoHeight;
+                    ctx.save();
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(videoElement, -bestFrameCanvas.width, 0, bestFrameCanvas.width, bestFrameCanvas.height);
+                    ctx.restore();
+                }
+            }
+        }
+
+        function calculateFrameScore(landmarks) {
+            const noseTip = landmarks[1];
+            const leftEye = landmarks[33];
+            const rightEye = landmarks[263];
+            const yawScore = Math.abs((noseTip.x - leftEye.x) - (rightEye.x - noseTip.x));
+            
+            const leftEyeTop = landmarks[159];
+            const leftEyeBottom = landmarks[145];
+            const rightEyeTop = landmarks[386];
+            const rightEyeBottom = landmarks[374];
+            const leftEyeOpenness = Math.abs(leftEyeTop.y - leftEyeBottom.y);
+            const rightEyeOpenness = Math.abs(rightEyeTop.y - rightEyeBottom.y);
+            
+            if (leftEyeOpenness < 0.01 || rightEyeOpenness < 0.01) return -1;
+
+            const blinkScore = (1 / (leftEyeOpenness + rightEyeOpenness));
+            const totalScore = yawScore + (blinkScore * 0.1);
+            return 1 / (totalScore + 0.001);
+        }
+
+        function startRecording() {
+            recordButton.disabled = true;
+            recordButton.textContent = 'Recording...';
+            guideText.textContent = 'Turn your head slowly';
+            recordingIndicator.classList.remove('hidden');
+            bestScore = -1;
+            isRecording = true;
+            
+            setTimeout(() => {
+                stopRecordingAndAnalyze();
+            }, 5000);
+        }
+
+        function stopRecordingAndAnalyze() {
+            isRecording = false;
+            recordingIndicator.classList.add('hidden');
+            cameraMP.stop();
+            webcamContainer.classList.add('hidden');
+
+            if (bestScore > -1) {
+                showSection(processingSection);
+                
+                bestFrameCanvas.toBlob(blob => {
+                    const formData = new FormData();
+                    formData.append('image', blob, 'best_frame.jpg');
+                    formData.append('frame_width_mm', frameWidthInput.value);
+                    sendFrameForAnalysis(formData);
+                }, 'image/jpeg');
+            } else {
+                showMessage('Could not find a good quality frame. Please try again.', true);
+                resetAll();
+            }
+        }
+        
+        async function sendFrameForAnalysis(formData) {
+            // IMPORTANT: Update this URL after deploying your backend to Vercel
+            // Your backend URL will be something like: https://your-backend-name.vercel.app
+            const API_BASE_URL = 'https://YOUR-BACKEND.vercel.app';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/process_image`, { method: 'POST', body: formData });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error || 'Server error.');
+                }
+                const results = await response.json();
+                displayResults(results);
+            } catch (error) {
+                showMessage(`Analysis Failed: ${error.message}`, true);
+                resetAll();
+            }
+        }
+
+        function showSection(section) {
+            [instructionsSection, captureSection, processingSection, resultsSection].forEach(s => s.classList.add('hidden'));
+            if(section) section.classList.remove('hidden');
+            const isWide = section === resultsSection;
+            if(isWide) { appContainer.classList.remove('max-w-lg'); appContainer.classList.add('max-w-6xl'); }
+            else { appContainer.classList.remove('max-w-6xl'); appContainer.classList.add('max-w-lg'); }
+            if(section !== instructionsSection && section !== captureSection) { header.classList.add('hidden'); }
+            else { header.classList.remove('hidden'); }
+        }
+
+        function resetAll() {
+            showSection(instructionsSection);
+            recordButton.textContent = 'Start 5 Second Recording';
+            recordButton.disabled = true;
+            startCameraButton.classList.remove('hidden');
+            startCameraButton.disabled = false;
+            startCameraButton.textContent = 'Start Camera';
+            hideMessage();
+        }
+
+        function displayResults(results) {
+            showSection(resultsSection);
+            const measurements = results.measurements;
+            animateCounter(pdResult, measurements.pd, "mm");
+            animateCounter(fhResult, measurements.fh, "mm");
+            animateCounter(tiltResult, measurements.tilt, "°", 0);
+            animateCounter(vertexResult, measurements.vertex, "mm", 0);
+
+            if (results.landmarks && results.frameDimensions) {
+                if (!renderer) init3DScene();
+                render3DModel(results.landmarks, results.frameDimensions);
+                d3Container.parentElement.classList.remove('hidden');
+            } else {
+                d3Container.parentElement.classList.add('hidden');
+            }
+        }
+
+        function animateCounter(element, finalValue, unit, decimals = 2) {
+            if (!element || typeof finalValue === 'undefined') return;
+            const duration = 1500;
+            const startTime = performance.now();
+            function update(currentTime) {
+                const elapsedTime = currentTime - startTime;
+                if (elapsedTime >= duration) {
+                    element.textContent = `${finalValue.toFixed(decimals)} ${unit}`;
+                    return;
+                }
+                const currentValue = (elapsedTime / duration) * finalValue;
+                element.textContent = `${currentValue.toFixed(decimals)} ${unit}`;
+                requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        }
+
+        function showMessage(msg, isError = false) { errorMessage.textContent = msg; errorMessage.classList.remove('hidden'); }
+        function hideMessage() { errorMessage.classList.add('hidden'); }
+        function init3DScene() { /* ... Your full init3DScene function ... */ }
+        function onWindowResize() { /* ... Your full onWindowResize function ... */ }
+        function render3DModel(landmarks, frameDimensions) { /* ... Your full render3DModel function ... */ }
+    </script>
+</body>
+</html>

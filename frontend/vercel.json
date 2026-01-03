@@ -1,9 +1,16 @@
 {
   "version": 2,
+  "name": "lenskart-ai-fitter",
   "builds": [
     {
-      "src": "frontend/index.html",
+      "src": "index.html",
       "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
