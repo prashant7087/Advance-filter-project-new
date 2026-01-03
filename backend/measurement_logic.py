@@ -1,7 +1,13 @@
 import cv2
-import mediapipe as mp
 import numpy as np
 import math
+import os
+import urllib.request
+
+# MediaPipe Tasks API
+import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
 # --- Landmark Indices (from MediaPipe Face Mesh) ---
 LEFT_PUPIL = 473
@@ -14,17 +20,40 @@ NOSE_TIP = 1
 FOREHEAD = 10
 CHIN = 152
 
+# Model file path
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'face_landmarker.task')
+MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
+
+
+def download_model_if_needed():
+    """Download the face landmarker model if it doesn't exist."""
+    if not os.path.exists(MODEL_PATH):
+        print(f"Downloading face landmarker model to {MODEL_PATH}...")
+        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+        print("Download complete.")
+    return MODEL_PATH
+
+
 def analyze_image(image_path, frame_width_mm):
     """
     Analyzes a single image to find facial landmarks and calculate optical measurements.
+    Uses the new MediaPipe Tasks API.
     """
-    mp_face_mesh = mp.solutions.face_mesh
-    face_mesh = mp_face_mesh.FaceMesh(
-        static_image_mode=True, 
-        max_num_faces=1, 
-        refine_landmarks=True, 
-        min_detection_confidence=0.5
+    # Ensure model is downloaded
+    model_path = download_model_if_needed()
+    
+    # Create FaceLandmarker
+    base_options = python.BaseOptions(model_asset_path=model_path)
+    options = vision.FaceLandmarkerOptions(
+        base_options=base_options,
+        output_face_blendshapes=False,
+        output_facial_transformation_matrixes=False,
+        num_faces=1
     )
+    
+    detector = vision.FaceLandmarker.create_from_options(options)
+    
+    # Load and process image
     image = cv2.imread(image_path)
     if image is None:
         raise ValueError("Error: Could not read image file.")
@@ -32,16 +61,29 @@ def analyze_image(image_path, frame_width_mm):
     frame_height_px, frame_width_px, _ = image.shape
     frame_dims = {"width": frame_width_px, "height": frame_height_px}
 
+    # Convert to RGB and create MediaPipe Image
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(image_rgb)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
     
-    if not results.multi_face_landmarks:
+    # Detect face landmarks
+    detection_result = detector.detect(mp_image)
+    
+    if not detection_result.face_landmarks:
         raise ValueError("No face detected in the image.")
-        
-    face_landmarks = results.multi_face_landmarks[0]
-    landmarks = face_landmarks.landmark
     
-    # --- Pixel to MM Conversion (Untouched and Correct) ---
+    # Get landmarks (first face)
+    face_landmarks = detection_result.face_landmarks[0]
+    
+    # Convert to the format expected by the rest of the code
+    class LandmarkWrapper:
+        def __init__(self, lm):
+            self.x = lm.x
+            self.y = lm.y
+            self.z = lm.z
+    
+    landmarks = [LandmarkWrapper(lm) for lm in face_landmarks]
+    
+    # --- Pixel to MM Conversion ---
     left_ref_pt = landmarks[LEFT_REFERENCE]
     right_ref_pt = landmarks[RIGHT_REFERENCE]
     ref_width_px = math.sqrt(((right_ref_pt.x - left_ref_pt.x) * frame_width_px)**2 + 
@@ -50,7 +92,7 @@ def analyze_image(image_path, frame_width_mm):
         raise ValueError("Could not establish a reference width for measurement.")
     mm_per_pixel = frame_width_mm / ref_width_px
 
-    # --- Measurement Calculations (Using Final Stable Logic) ---
+    # --- Measurement Calculations ---
     left_pupil_pt = landmarks[LEFT_PUPIL]
     right_pupil_pt = landmarks[RIGHT_PUPIL]
     pd_px = math.sqrt(((right_pupil_pt.x - left_pupil_pt.x) * frame_width_px)**2 + 
@@ -71,5 +113,6 @@ def analyze_image(image_path, frame_width_mm):
 
     measurements = { "pd": pd_mm, "fh": fh_mm, "tilt": min(tilt_deg, 15.0), "vertex": min(vertex_mm, 14.0) }
     landmarks_for_3d = [[lm.x, lm.y, lm.z] for lm in landmarks]
-    face_mesh.close()
+    
+    detector.close()
     return measurements, landmarks_for_3d, frame_dims

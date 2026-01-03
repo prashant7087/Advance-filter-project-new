@@ -1,5 +1,5 @@
 flask==3.0.0
 flask-cors==4.0.0
 numpy
-mediapipe==0.10.14
+mediapipe
 opencv-python-headless
