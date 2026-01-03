@@ -33,7 +33,16 @@ except ImportError:
     analyze_image = measurement_logic.analyze_image
 
 
+# Root route for testing
+@app.route('/', methods=['GET'])
+@app.route('/api', methods=['GET'])
+@app.route('/api/', methods=['GET'])
+def root():
+    return jsonify({'message': 'Lenskart AI Fitter API is running!'}), 200
+
+
 @app.route('/health', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
 def health_check():
     """
     A simple health check endpoint to confirm the API is running.
@@ -43,6 +52,7 @@ def health_check():
 
 
 @app.route('/process_image', methods=['POST', 'OPTIONS'])
+@app.route('/api/process_image', methods=['POST', 'OPTIONS'])
 def process_image_endpoint():
     """
     Endpoint to process a single image file for optical measurements.
@@ -89,7 +99,3 @@ def process_image_endpoint():
         if os.path.exists(image_path):
             os.remove(image_path)
             app.logger.info(f"Cleaned up temporary file: {image_path}")
-
-
-# This is required for Vercel serverless functions
-# The app variable is what Vercel looks for

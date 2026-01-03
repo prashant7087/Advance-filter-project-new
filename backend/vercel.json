@@ -6,13 +6,9 @@
       "use": "@vercel/python"
     }
   ],
-  "rewrites": [
-    { "source": "/health", "destination": "/api" },
-    { "source": "/process_image", "destination": "/api" }
-  ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
