@@ -6,19 +6,10 @@
       "use": "@vercel/python"
     }
   ],
-  "routes": [
-    {
-      "src": "/health",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/process_image",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "api/index.py"
-    }
+  "rewrites": [
+    { "source": "/health", "destination": "/api/index" },
+    { "source": "/process_image", "destination": "/api/index" },
+    { "source": "/(.*)", "destination": "/api/index" }
   ],
   "headers": [
     {
