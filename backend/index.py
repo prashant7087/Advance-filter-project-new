@@ -28,6 +28,54 @@ def health():
     return jsonify({'message': 'API is working fine on Vercel!'})
 
 
+# ========================================
+# HARDCODED CREDENTIALS
+# ========================================
+ADMIN_EMAIL = "admin@admin.com"
+ADMIN_PASSWORD = "admin@123"
+
+
+@app.route('/login', methods=['POST', 'OPTIONS'])
+def login():
+    """
+    Validate login credentials.
+    Expects JSON: { "email": "...", "password": "..." }
+    """
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        return '', 200
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        app.logger.info(f"Login attempt for email: {email}")
+        
+        if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
+            # Generate a simple session token
+            session_token = str(uuid.uuid4())
+            app.logger.info(f"Login successful for {email}")
+            return jsonify({
+                'success': True,
+                'token': session_token,
+                'message': 'Login successful'
+            }), 200
+        else:
+            app.logger.warning(f"Login failed for {email}")
+            return jsonify({
+                'success': False,
+                'error': 'Invalid email or password'
+            }), 401
+            
+    except Exception as e:
+        app.logger.error(f"Login error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/process_image', methods=['POST', 'OPTIONS'])
 def process_image():
     """
