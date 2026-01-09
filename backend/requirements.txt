@@ -3,3 +3,5 @@ flask-cors==4.0.0
 numpy
 mediapipe
 opencv-python-headless
+pymongo
+python-dotenv
