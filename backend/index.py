@@ -76,6 +76,70 @@ def login():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/save-user', methods=['POST', 'OPTIONS'])
+def save_user():
+    """
+    Save user information (name, phone).
+    Expects JSON: { "name": "...", "phone": "..." }
+    Returns: { "success": true, "user_id": "..." }
+    """
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        return '', 200
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        name = data.get('name', '').strip()
+        phone = data.get('phone', '').strip()
+        
+        if not name or not phone:
+            return jsonify({'success': False, 'error': 'Name and phone are required'}), 400
+        
+        app.logger.info(f"Saving user: {name}, {phone}")
+        
+        # For Vercel serverless, generate a UUID (no persistent DB in this simple version)
+        user_id = str(uuid.uuid4())
+        app.logger.info(f"User saved with ID: {user_id}")
+        
+        return jsonify({
+            'success': True,
+            'user_id': user_id,
+            'message': 'User saved successfully'
+        }), 200
+        
+    except Exception as e:
+        app.logger.error(f"Save user error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/history', methods=['GET', 'OPTIONS'])
+def get_history():
+    """
+    Fetch measurement history.
+    For Vercel serverless, returns empty history (no persistent storage).
+    """
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        return '', 200
+    
+    try:
+        # For Vercel serverless without persistent DB, return empty history
+        app.logger.info("History endpoint called - returning empty history (serverless mode)")
+        return jsonify({
+            'success': True,
+            'history': [],
+            'count': 0,
+            'message': 'History not available in serverless mode'
+        }), 200
+        
+    except Exception as e:
+        app.logger.error(f"History fetch error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/process_image', methods=['POST', 'OPTIONS'])
 def process_image():
     """
