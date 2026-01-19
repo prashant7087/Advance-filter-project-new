@@ -1,4 +1,4 @@
-import cv2
+from PIL import Image
 import numpy as np
 import math
 import os
@@ -55,15 +55,19 @@ def analyze_image(image_path, frame_width_mm):
     detector = vision.FaceLandmarker.create_from_options(options)
     
     # Load and process image
-    image = cv2.imread(image_path)
-    if image is None:
+    try:
+        pil_image = Image.open(image_path)
+    except Exception:
         raise ValueError("Error: Could not read image file.")
 
-    frame_height_px, frame_width_px, _ = image.shape
+    # Convert to RGB (MediaPipe needs RGB)
+    pil_image = pil_image.convert('RGB')
+    image_rgb = np.array(pil_image)
+    
+    frame_height_px, frame_width_px, _ = image_rgb.shape
     frame_dims = {"width": frame_width_px, "height": frame_height_px}
 
-    # Convert to RGB and create MediaPipe Image
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # Create MediaPipe Image (already RGB)
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
     
     # Detect face landmarks
