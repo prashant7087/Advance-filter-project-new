@@ -14,3 +14,8 @@ Advance-filter-project-/
 tests/
 *_test.py
 test_*.py
+
+# Critical: Ignore virtual environment
+venv/
+.venv/
+env/
