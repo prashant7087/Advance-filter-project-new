@@ -1,0 +1,16 @@
+# Ignore unnecessary files to reduce bundle size
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.DS_Store
+uploads/
+*.md
+Dockerfile
+.env.example
+Advance-filter-project-/
+
+# Ignore test files
+tests/
+*_test.py
+test_*.py
