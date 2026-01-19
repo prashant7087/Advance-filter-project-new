@@ -16,11 +16,17 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
 # Enable CORS for all origins
-CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:5500", "*"])
+# Enable CORS for all origins
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Ensure the 'uploads' directory exists
-if not os.path.exists('uploads'):
-    os.makedirs('uploads')
+import tempfile
+
+# Use /tmp for Vercel serverless functions
+UPLOAD_FOLDER = tempfile.gettempdir()
+
+# Ensure the 'uploads' directory exists (if using local)
+# if not os.path.exists('uploads'):
+#     os.makedirs('uploads')
 
 # ========================================
 # HARDCODED CREDENTIALS
@@ -235,7 +241,7 @@ def process_image_endpoint():
         return jsonify({'error': 'frame_width_mm must be a valid number'}), 400
 
     filename = str(uuid.uuid4()) + '.jpg'
-    image_path = os.path.join('uploads', filename)
+    image_path = os.path.join(UPLOAD_FOLDER, filename)
     image_file.save(image_path)
     app.logger.info(f"Image saved to {image_path}")
 
@@ -276,5 +282,5 @@ def process_image_endpoint():
 
 if __name__ == '__main__':
     # Run the Flask app on port 5000 (port 6000 is blocked by browsers)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)
 
