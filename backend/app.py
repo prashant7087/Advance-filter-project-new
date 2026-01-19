@@ -25,8 +25,8 @@ if not os.path.exists('uploads'):
 # ========================================
 # HARDCODED CREDENTIALS
 # ========================================
-ADMIN_EMAIL = "admin@admin.com"
-ADMIN_PASSWORD = "admin@123"
+ADMIN_EMAIL = "admin@pupilbot.site"
+ADMIN_PASSWORD = "@d$miN####1"
 
 # ========================================
 # Database Helper Functions
