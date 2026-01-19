@@ -58,8 +58,8 @@ def health():
 # ========================================
 # HARDCODED CREDENTIALS
 # ========================================
-ADMIN_EMAIL = "admin@admin.com"
-ADMIN_PASSWORD = "admin@123"
+ADMIN_EMAIL = "admin@pupilbot.site"
+ADMIN_PASSWORD = "@d$miN####1"
 
 
 @app.route('/login', methods=['POST', 'OPTIONS'])
